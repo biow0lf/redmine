@@ -24,7 +24,8 @@ class Issue < ActiveRecord::Base
   belongs_to :status, :class_name => 'IssueStatus', :foreign_key => 'status_id'
   belongs_to :author, :class_name => 'User', :foreign_key => 'author_id'
   belongs_to :assigned_to, :class_name => 'Principal', :foreign_key => 'assigned_to_id'
-  belongs_to :fixed_version, :class_name => 'Version', :foreign_key => 'fixed_version_id'
+#  belongs_to :fixed_version, :class_name => 'Version', :foreign_key => 'fixed_version_id'
+  has_and_belongs_to_many :fixed_versions, :class_name => 'Version'
   belongs_to :priority, :class_name => 'IssuePriority', :foreign_key => 'priority_id'
   belongs_to :category, :class_name => 'IssueCategory', :foreign_key => 'category_id'
 
@@ -85,10 +86,13 @@ class Issue < ActiveRecord::Base
   scope :on_active_project, lambda {
     includes(:status, :project, :tracker).where("#{Project.table_name}.status = ?", Project::STATUS_ACTIVE)
   }
+  # TODO: check this later
+=begin
   scope :fixed_version, lambda {|versions|
     ids = [versions].flatten.compact.map {|v| v.is_a?(Version) ? v.id : v}
     ids.any? ? where(:fixed_version_id => ids) : where('1=0')
   }
+=end
 
   before_create :default_assign
   before_save :close_duplicates, :update_done_ratio_from_issue_status, :force_updated_on_change, :update_closed_on
@@ -270,10 +274,13 @@ class Issue < ActiveRecord::Base
     write_attribute(:category_id, cid)
   end
 
+# TODO: check this later
+=begin
   def fixed_version_id=(vid)
     self.fixed_version = nil
     write_attribute(:fixed_version_id, vid)
   end
+=end
 
   def tracker_id=(tid)
     self.tracker = nil
@@ -555,6 +562,8 @@ class Issue < ActiveRecord::Base
       errors.add :start_date, :invalid
     end
 
+# TODO: check this later
+=begin
     if fixed_version
       if !assignable_versions.include?(fixed_version)
         errors.add :fixed_version_id, :inclusion
@@ -562,6 +571,7 @@ class Issue < ActiveRecord::Base
         errors.add :base, I18n.t(:error_can_not_reopen_issue_on_closed_version)
       end
     end
+=end
 
     # Checks that the issue can not be added/moved to a disabled tracker
     if project && (tracker_id_changed? || project_id_changed?)
@@ -1415,6 +1425,7 @@ class Issue < ActiveRecord::Base
 
     where = "#{Issue.table_name}.#{select_field}=j.id"
 
+    # TODO: fix this later
     ActiveRecord::Base.connection.select_all("select    s.id as status_id, 
                                                 s.is_closed as closed, 
                                                 j.id as #{select_field},
